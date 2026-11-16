@@ -13,6 +13,7 @@ All notable changes to this project are documented here. The format follows
 - Tag lines can carry a friendly name: `DB1.DBD0:REAL = Vorlauftemperatur` names the entity. Unique IDs still follow the address, so renaming a tag keeps its history and automations.
 - A writable BOOL tag flagged with `| push` (or `| push:SECONDS`, default 0.5 s) becomes a momentary button instead of a latching switch: pressing it writes `True`, waits, then writes `False` again — for PLC logic with separate set/reset bits, such as lights with their own ON and OFF commands.
 - A numeric tag flagged with `| range:MIN-MAX` limits its number entity to that range, e.g. `| range:0-100` for dimmer setpoints and blind positions.
+- A tag flagged with `| area:NAME` joins a per-room device under the PLC with that suggested area, so entities can be sorted into rooms. Tags without `area` stay on the PLC device.
 
 ## [0.4.0] - 2026-11-14
 

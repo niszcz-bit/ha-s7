@@ -23,6 +23,10 @@
   mit getrennten Ein-/Aus-Bits.
 - **Wertebereich für Zahlenfelder:** `DB5802.DBW2:INT = Helligkeit | range:0-100`
   begrenzt das Eingabefeld z. B. für Dimmer oder Jalousie-Positionen.
+- **Räume:** `... = Licht EIN | push | area:Bar` ordnet die Entität einem
+  eigenen Gerät pro Raum zu (mit vorgeschlagenem Bereich), sodass Home
+  Assistant sie direkt dem richtigen Raum zuordnen kann. Entitäten ohne
+  `area` bleiben am SPS-Gerät.
 
 ## Beispiel-Tagliste
 

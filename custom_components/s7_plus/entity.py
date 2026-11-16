@@ -39,12 +39,25 @@ class S7BaseEntity(CoordinatorEntity[S7Coordinator]):
         # Unique IDs follow the bare address, so renaming a tag keeps the entity.
         self._attr_unique_id = f"{coordinator.plc_id}_{tag}"
         self._attr_name = coordinator.tag_name(tag) or tag
-        self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, coordinator.plc_id)},
-            name=f"S7 PLC {coordinator.host}",
-            manufacturer="Siemens",
-            model="S7",
-        )
+        # A tag with ``| area:NAME`` joins a per-room device under the PLC,
+        # so Home Assistant can assign the room with one click (suggested area).
+        area = coordinator.tag_area(tag)
+        if area:
+            self._attr_device_info = DeviceInfo(
+                identifiers={(DOMAIN, f"{coordinator.plc_id}#room:{area}")},
+                name=area,
+                manufacturer="Siemens",
+                model="S7",
+                suggested_area=area,
+                via_device=(DOMAIN, coordinator.plc_id),
+            )
+        else:
+            self._attr_device_info = DeviceInfo(
+                identifiers={(DOMAIN, coordinator.plc_id)},
+                name=f"S7 PLC {coordinator.host}",
+                manufacturer="Siemens",
+                model="S7",
+            )
 
     @property
     def available(self) -> bool:

@@ -50,20 +50,23 @@ class TagSpec:
     name: str | None = None  # friendly name after ``=``, shown as the entity name
     push_duration: float | None = None  # set by ``| push[:seconds]`` — a momentary button
     value_range: tuple[float, float] | None = None  # set by ``| range:MIN-MAX`` on numeric tags
+    area: str | None = None  # set by ``| area:NAME`` — entity joins a per-room device with that suggested area
 
 
 _RANGE_RE = re.compile(r"^range:(-?\d+(?:\.\d+)?)-(-?\d+(?:\.\d+)?)$")
+_AREA_RE = re.compile(r"^area:(.+)$")
 
 
-def parse_tag_line(raw: str) -> tuple[str, str | None, float | None, tuple[float, float] | None]:
-    """Split one tag line into ``(address, name, push_duration, value_range)``.
+def parse_tag_line(raw: str) -> tuple[str, str | None, float | None, tuple[float, float] | None, str | None]:
+    """Split one tag line into ``(address, name, push_duration, value_range, area)``.
 
     Syntax: ``ADDRESS`` optionally followed by ``= Friendly Name`` and the
     flags ``| push[:SECONDS]`` (momentary button instead of a latching
-    switch) and ``| range:MIN-MAX`` (limits the number entity, e.g.
-    ``range:0-100`` for a dimmer or blind position). ``=`` and ``|`` never
-    appear in PLC4X or nodeS7 addresses, and the list was already split on
-    newlines and semicolons.
+    switch), ``| range:MIN-MAX`` (limits the number entity, e.g.
+    ``range:0-100`` for a dimmer or blind position) and ``| area:NAME``
+    (groups the entity into a per-room device with that suggested area).
+    ``=`` and ``|`` never appear in PLC4X or nodeS7 addresses, and the list
+    was already split on newlines and semicolons.
     """
     head, *flags = raw.split("|")
     name: str | None = None
@@ -77,6 +80,7 @@ def parse_tag_line(raw: str) -> tuple[str, str | None, float | None, tuple[float
         raise ValueError(f"{raw!r}: empty address")
     push_duration: float | None = None
     value_range: tuple[float, float] | None = None
+    area: str | None = None
     for flag in flags:
         flag = flag.strip()
         if flag == "push":
@@ -93,9 +97,13 @@ def parse_tag_line(raw: str) -> tuple[str, str | None, float | None, tuple[float
             if lo >= hi:
                 raise ValueError(f"{raw!r}: range minimum must be below the maximum")
             value_range = (lo, hi)
+        elif (m := _AREA_RE.match(flag)) is not None:
+            area = m.group(1).strip()
+            if not area:
+                raise ValueError(f"{raw!r}: empty area name")
         else:
-            raise ValueError(f"{raw!r}: unknown option {flag!r} (supported: push, push:SECONDS, range:MIN-MAX)")
-    return address, name, push_duration, value_range
+            raise ValueError(f"{raw!r}: unknown option {flag!r} (supported: push, push:SECONDS, range:MIN-MAX, area:NAME)")
+    return address, name, push_duration, value_range, area
 
 
 def parse_tag_specs(inputs: list[str]) -> dict[str, TagSpec]:
@@ -112,7 +120,7 @@ def parse_tag_specs(inputs: list[str]) -> dict[str, TagSpec]:
     errors: list[str] = []
     for raw in inputs:
         try:
-            address, name, push_duration, value_range = parse_tag_line(raw)
+            address, name, push_duration, value_range, area = parse_tag_line(raw)
             tag = parse_tag(address, strict=False, name=address)
             _ = tag.size  # parse_tag accepts STRING without a length and unknown types
         except ValueError as err:
@@ -132,10 +140,12 @@ def parse_tag_specs(inputs: list[str]) -> dict[str, TagSpec]:
             errors.append(f"{raw!r}: range is only valid for numeric tags")
             continue
         old = parsed.get(address)
-        if old is not None and (old.name, old.push_duration, old.value_range) != (name, push_duration, value_range):
+        if old is not None and (old.name, old.push_duration, old.value_range, old.area) != (name, push_duration, value_range, area):
             errors.append(f"{raw!r}: address {address!r} is already configured with a different name or options")
             continue
-        parsed[address] = TagSpec(tag=tag, address=address, name=name, push_duration=push_duration, value_range=value_range)
+        parsed[address] = TagSpec(
+            tag=tag, address=address, name=name, push_duration=push_duration, value_range=value_range, area=area
+        )
     if errors:
         raise ValueError("Invalid tag(s): " + "; ".join(errors))
     return parsed
@@ -232,6 +242,11 @@ class S7Coordinator(DataUpdateCoordinator[dict[str, Any]]):
         """The configured min/max for a numeric tag's number entity, or None."""
         spec = self._tag_specs.get(address)
         return spec.value_range if spec is not None else None
+
+    def tag_area(self, address: str) -> str | None:
+        """The room configured for an address (``| area:NAME``), or None."""
+        spec = self._tag_specs.get(address)
+        return spec.area if spec is not None else None
 
     @property
     def failed_tags(self) -> dict[str, str]:
