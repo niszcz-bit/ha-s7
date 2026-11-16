@@ -43,7 +43,7 @@ async def async_setup_entry(
     entities: list[S7Number] = []
     for raw, tag in coordinator.parsed_tags.items():
         dt = tag.datatype.upper()
-        if dt in NUMERIC_TYPES and tag.area in WRITABLE_AREAS:
+        if dt in NUMERIC_TYPES and tag.area in WRITABLE_AREAS and not coordinator.tag_readonly(raw):
             entities.append(S7Number(coordinator, raw, dt))
     async_add_entities(entities)
 

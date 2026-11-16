@@ -9,7 +9,7 @@ from custom_components.s7_plus.coordinator import parse_tag_line, parse_tag_spec
 
 
 def test_plain_address_has_no_extras() -> None:
-    assert parse_tag_line("DB1.DBD0:REAL") == ("DB1.DBD0:REAL", None, None, None, None)
+    assert parse_tag_line("DB1.DBD0:REAL") == ("DB1.DBD0:REAL", None, None, None, None, False)
 
 
 def test_name_after_equals() -> None:
@@ -19,23 +19,24 @@ def test_name_after_equals() -> None:
         None,
         None,
         None,
+        False,
     )
 
 
 def test_push_flag_default_duration() -> None:
-    assert parse_tag_line("M10.0:BOOL|push") == ("M10.0:BOOL", None, DEFAULT_PULSE_DURATION, None, None)
+    assert parse_tag_line("M10.0:BOOL|push") == ("M10.0:BOOL", None, DEFAULT_PULSE_DURATION, None, None, False)
 
 
 def test_push_flag_custom_duration() -> None:
-    assert parse_tag_line("M10.0:BOOL | push:1.5") == ("M10.0:BOOL", None, 1.5, None, None)
+    assert parse_tag_line("M10.0:BOOL | push:1.5") == ("M10.0:BOOL", None, 1.5, None, None, False)
 
 
 def test_name_and_push_combined() -> None:
-    assert parse_tag_line("DB2.DBX0.0:BOOL=Licht EIN|push:0.2") == ("DB2.DBX0.0:BOOL", "Licht EIN", 0.2, None, None)
+    assert parse_tag_line("DB2.DBX0.0:BOOL=Licht EIN|push:0.2") == ("DB2.DBX0.0:BOOL", "Licht EIN", 0.2, None, None, False)
 
 
 def test_nodes7_address_with_name() -> None:
-    assert parse_tag_line("DB1,R8=Restlaufzeit") == ("DB1,R8", "Restlaufzeit", None, None, None)
+    assert parse_tag_line("DB1,R8=Restlaufzeit") == ("DB1,R8", "Restlaufzeit", None, None, None, False)
 
 
 def test_range_flag() -> None:
@@ -45,11 +46,12 @@ def test_range_flag() -> None:
         None,
         (0.0, 100.0),
         None,
+        False,
     )
 
 
 def test_range_flag_negative_and_float() -> None:
-    assert parse_tag_line("DB1.DBD0:REAL|range:-20.5-80") == ("DB1.DBD0:REAL", None, None, (-20.5, 80.0), None)
+    assert parse_tag_line("DB1.DBD0:REAL|range:-20.5-80") == ("DB1.DBD0:REAL", None, None, (-20.5, 80.0), None, False)
 
 
 def test_area_flag() -> None:
@@ -59,6 +61,7 @@ def test_area_flag() -> None:
         DEFAULT_PULSE_DURATION,
         None,
         "Bar",
+        False,
     )
 
 
@@ -69,6 +72,7 @@ def test_all_flags_combined() -> None:
         None,
         (0.0, 100.0),
         "Bar",
+        False,
     )
 
 
@@ -84,6 +88,7 @@ def test_all_flags_combined() -> None:
         "DB1.DBW4:INT|range:100-0",  # minimum above the maximum
         "DB1.DBW4:INT|range:abc-def",  # not numbers
         "M10.0:BOOL|area:",  # empty area name
+        "M10.0:BOOL|push|readonly",  # push and readonly exclude each other
     ],
 )
 def test_bad_lines_raise(line: str) -> None:
@@ -122,6 +127,13 @@ def test_push_needs_a_writable_bool() -> None:
 def test_conflicting_duplicate_address_raises() -> None:
     with pytest.raises(ValueError, match="already configured"):
         parse_tag_specs(["M10.0:BOOL=A", "M10.0:BOOL=B"])
+
+
+def test_readonly_flag() -> None:
+    specs = parse_tag_specs(["DB5802.DBX24.1:BOOL=Jal 1 Cl|readonly|area:Badezimmer"])
+    spec = specs["DB5802.DBX24.1:BOOL"]
+    assert spec.readonly is True
+    assert spec.push_duration is None
 
 
 def test_identical_repeat_is_one_tag() -> None:

@@ -22,10 +22,11 @@ async def async_setup_entry(
 ) -> None:
     coordinator = entry.runtime_data
     entities: list[S7BinarySensor] = []
-    # Only BOOL tags from the input area (read-only).
-    # Writable BOOLs in DB/M/Q areas become switches instead (see switch.py).
+    # BOOL tags from the input area (read-only), plus any BOOL flagged
+    # ``| readonly`` — status bits in DB/M/Q, e.g. a blind's open/closed state.
+    # Writable BOOLs without the flag become switches or push buttons instead.
     for raw, tag in coordinator.parsed_tags.items():
-        if tag.datatype.upper() == "BOOL" and tag.area == Area.PE:
+        if tag.datatype.upper() == "BOOL" and (tag.area == Area.PE or coordinator.tag_readonly(raw)):
             entities.append(S7BinarySensor(coordinator, raw))
     async_add_entities(entities)
 

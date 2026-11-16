@@ -23,8 +23,14 @@ async def async_setup_entry(
     coordinator = entry.runtime_data
     entities: list[S7Switch] = []
     for raw, tag in coordinator.parsed_tags.items():
-        # Push tags become momentary buttons instead (see button.py).
-        if tag.datatype.upper() == "BOOL" and tag.area in WRITABLE_AREAS and coordinator.push_duration(raw) is None:
+        # Push tags become momentary buttons (see button.py); readonly tags
+        # are status-only and become binary sensors (see binary_sensor.py).
+        if (
+            tag.datatype.upper() == "BOOL"
+            and tag.area in WRITABLE_AREAS
+            and coordinator.push_duration(raw) is None
+            and not coordinator.tag_readonly(raw)
+        ):
             entities.append(S7Switch(coordinator, raw))
     async_add_entities(entities)
 

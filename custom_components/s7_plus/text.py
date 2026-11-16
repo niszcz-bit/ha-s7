@@ -35,7 +35,7 @@ async def async_setup_entry(
     coordinator = entry.runtime_data
     entities: list[S7Text] = []
     for raw, tag in coordinator.parsed_tags.items():
-        if base_type(tag.datatype) in STRING_TYPES and tag.area in WRITABLE_AREAS:
+        if base_type(tag.datatype) in STRING_TYPES and tag.area in WRITABLE_AREAS and not coordinator.tag_readonly(raw):
             entities.append(S7Text(coordinator, raw, tag.datatype))
     async_add_entities(entities)
 

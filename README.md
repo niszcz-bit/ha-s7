@@ -27,6 +27,9 @@
   eigenen Gerät pro Raum zu (mit vorgeschlagenem Bereich), sodass Home
   Assistant sie direkt dem richtigen Raum zuordnen kann. Entitäten ohne
   `area` bleiben am SPS-Gerät.
+- **Reine Statusanzeige:** `... = Jal 1 Cl | readonly` macht aus einem
+  schreibbaren Tag eine Nur-Lese-Anzeige (BOOL → Binärsensor, Zahl → nur
+  Sensor) — für Zustandsbits wie das Offen/Geschlossen einer Jalousie.
 
 ## Beispiel-Tagliste
 
