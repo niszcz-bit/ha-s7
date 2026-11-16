@@ -31,6 +31,8 @@ DEFAULT_RACK = 0
 DEFAULT_SLOT = 1
 DEFAULT_SCAN_INTERVAL = timedelta(seconds=30)
 DEFAULT_PROTOCOL = PROTOCOL_LEGACY
+# Pulse length for ``| push`` tags when no ``push:SECONDS`` is given.
+DEFAULT_PULSE_DURATION = 0.5
 
 
 def plc_id(data: Mapping[str, Any]) -> str:
@@ -46,6 +48,7 @@ PLATFORMS: list[Platform] = [
     Platform.SENSOR,
     Platform.BINARY_SENSOR,
     Platform.SWITCH,
+    Platform.BUTTON,
     Platform.NUMBER,
     Platform.TEXT,
 ]

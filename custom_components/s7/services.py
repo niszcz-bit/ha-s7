@@ -104,7 +104,7 @@ def _coerce_value(raw: bool | int | float | str, datatype: str) -> Any:
                     continue
         try:
             number = float(raw)
-        except ValueError, OverflowError:
+        except (ValueError, OverflowError):
             number = float("nan")
         if number.is_integer():  # 3.0 and "3.0" are whole numbers too
             return int(number)

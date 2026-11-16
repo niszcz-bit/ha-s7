@@ -36,8 +36,9 @@ class S7BaseEntity(CoordinatorEntity[S7Coordinator]):
     def __init__(self, coordinator: S7Coordinator, tag: str) -> None:
         super().__init__(coordinator)
         self._tag = tag
+        # Unique IDs follow the bare address, so renaming a tag keeps the entity.
         self._attr_unique_id = f"{coordinator.plc_id}_{tag}"
-        self._attr_name = tag
+        self._attr_name = coordinator.tag_name(tag) or tag
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, coordinator.plc_id)},
             name=f"S7 PLC {coordinator.host}",
