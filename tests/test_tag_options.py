@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import pytest
 
-from custom_components.s7.const import DEFAULT_PULSE_DURATION
-from custom_components.s7.coordinator import parse_tag_line, parse_tag_specs, parse_tags
+from custom_components.s7_plus.const import DEFAULT_PULSE_DURATION
+from custom_components.s7_plus.coordinator import parse_tag_line, parse_tag_specs, parse_tags
 
 
 def test_plain_address_has_no_extras() -> None:

@@ -6,8 +6,8 @@ import pytest
 from homeassistant.core import HomeAssistant
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.s7.const import CONF_HOST, CONF_PORT, CONF_RACK, CONF_SCAN_INTERVAL, CONF_SLOT, CONF_TAGS, DOMAIN
-from custom_components.s7.coordinator import parse_tags
+from custom_components.s7_plus.const import CONF_HOST, CONF_PORT, CONF_RACK, CONF_SCAN_INTERVAL, CONF_SLOT, CONF_TAGS, DOMAIN
+from custom_components.s7_plus.coordinator import parse_tags
 
 
 async def _setup(hass: HomeAssistant, port: int, tags: list[str], **options) -> MockConfigEntry:

@@ -1,5 +1,5 @@
 {
-  "name": "Siemens S7 PLC",
-  "render_readme": true,
+  "name": "Siemens S7 PLC Plus",
+  "render_readme": false,
   "homeassistant": "2026.9.0"
 }

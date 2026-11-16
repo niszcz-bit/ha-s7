@@ -7,8 +7,8 @@ from typing import Any
 import pytest
 from homeassistant.core import HomeAssistant
 
-from custom_components.s7 import config_flow
-from custom_components.s7.const import CONF_HOST, CONF_PORT, CONF_PROTOCOL, CONF_RACK, CONF_SLOT, CONF_TAGS, DOMAIN
+from custom_components.s7_plus import config_flow
+from custom_components.s7_plus.const import CONF_HOST, CONF_PORT, CONF_PROTOCOL, CONF_RACK, CONF_SLOT, CONF_TAGS, DOMAIN
 
 
 @pytest.mark.parametrize("protocol", ["legacy", "s7commplus"])

@@ -16,7 +16,7 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 from snap7.server import Server as LegacyServer
 from snap7.type import SrvArea
 
-from custom_components.s7.const import CONF_HOST, CONF_PORT, CONF_RACK, CONF_SLOT, CONF_TAGS, DOMAIN
+from custom_components.s7_plus.const import CONF_HOST, CONF_PORT, CONF_RACK, CONF_SLOT, CONF_TAGS, DOMAIN
 
 _TAGS = ["I0.0:BOOL", "I0.1:BOOL", "IW2:INT", "M10.5:BOOL", "MW20:INT", "Q0.0:BOOL", "QW2:INT"]
 

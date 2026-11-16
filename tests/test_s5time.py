@@ -12,7 +12,7 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 from snap7.server import Server as LegacyServer
 from snap7.type import SrvArea
 
-from custom_components.s7.const import CONF_HOST, CONF_PORT, CONF_RACK, CONF_SLOT, CONF_TAGS, DOMAIN
+from custom_components.s7_plus.const import CONF_HOST, CONF_PORT, CONF_RACK, CONF_SLOT, CONF_TAGS, DOMAIN
 
 
 async def test_s5time_is_a_sensor(hass: HomeAssistant) -> None:

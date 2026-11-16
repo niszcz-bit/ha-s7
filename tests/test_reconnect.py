@@ -14,7 +14,7 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 from snap7.client import Client
 from snap7.error import S7ConnectionError
 
-from custom_components.s7.const import CONF_HOST, CONF_PORT, CONF_RACK, CONF_SLOT, CONF_TAGS, DOMAIN
+from custom_components.s7_plus.const import CONF_HOST, CONF_PORT, CONF_RACK, CONF_SLOT, CONF_TAGS, DOMAIN
 
 WORD = "DB2.DBW0:INT"
 

@@ -8,7 +8,7 @@ from homeassistant import config_entries
 from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResultType
 
-from custom_components.s7.const import (
+from custom_components.s7_plus.const import (
     CONF_HOST,
     CONF_PORT,
     CONF_PROTOCOL,
@@ -16,7 +16,7 @@ from custom_components.s7.const import (
     DOMAIN,
     PROTOCOL_S7COMMPLUS,
 )
-from custom_components.s7.coordinator import S7Coordinator
+from custom_components.s7_plus.coordinator import S7Coordinator
 
 
 def _coordinator(hass: HomeAssistant, port: int, tags: list[str]) -> S7Coordinator:

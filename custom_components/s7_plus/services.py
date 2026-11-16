@@ -1,9 +1,9 @@
-"""Service handlers for the s7 integration.
+"""Service handlers for the s7_plus integration.
 
 Exposes two global services, registered once when the integration is set up:
 
-- ``s7.write_tag`` — write a value to any tag on a given PLC.
-- ``s7.pulse_tag`` — write True, wait ``duration`` seconds, write False
+- ``s7_plus.write_tag`` — write a value to any tag on a given PLC.
+- ``s7_plus.pulse_tag`` — write True, wait ``duration`` seconds, write False
   (momentary bit commands).
 
 Both take an ``entry_id`` to identify which PLC to operate on, since a

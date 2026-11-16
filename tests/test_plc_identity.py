@@ -15,7 +15,7 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 from snap7.server import Server as LegacyServer
 from snap7.type import SrvArea
 
-from custom_components.s7.const import CONF_HOST, CONF_PORT, CONF_PROTOCOL, CONF_RACK, CONF_SLOT, CONF_TAGS, DOMAIN, plc_id
+from custom_components.s7_plus.const import CONF_HOST, CONF_PORT, CONF_PROTOCOL, CONF_RACK, CONF_SLOT, CONF_TAGS, DOMAIN, plc_id
 
 
 def _start_server(data: bytearray) -> tuple[LegacyServer, int]:

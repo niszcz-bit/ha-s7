@@ -9,7 +9,7 @@ from homeassistant.data_entry_flow import FlowResultType
 from homeassistant.helpers.selector import TextSelector
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.s7.const import (
+from custom_components.s7_plus.const import (
     CONF_HOST,
     CONF_PASSWORD,
     CONF_PORT,
@@ -19,7 +19,7 @@ from custom_components.s7.const import (
     CONF_TAGS,
     DOMAIN,
 )
-from custom_components.s7.plc import LegacyPlcClient
+from custom_components.s7_plus.plc import LegacyPlcClient
 
 
 async def test_user_flow_success(hass: HomeAssistant, s7_server) -> None:

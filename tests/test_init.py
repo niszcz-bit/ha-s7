@@ -7,7 +7,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResultType
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.s7.const import (
+from custom_components.s7_plus.const import (
     CONF_HOST,
     CONF_PORT,
     CONF_RACK,
@@ -15,7 +15,7 @@ from custom_components.s7.const import (
     CONF_TAGS,
     DOMAIN,
 )
-from custom_components.s7.coordinator import S7Coordinator
+from custom_components.s7_plus.coordinator import S7Coordinator
 
 
 async def test_entry_setup_and_unload(hass: HomeAssistant, s7_server) -> None:

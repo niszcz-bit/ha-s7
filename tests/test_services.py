@@ -10,7 +10,7 @@ from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
 from homeassistant.setup import async_setup_component
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.s7.const import (
+from custom_components.s7_plus.const import (
     CONF_HOST,
     CONF_PORT,
     CONF_RACK,

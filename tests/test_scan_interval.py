@@ -9,7 +9,7 @@ from homeassistant.data_entry_flow import InvalidData
 from homeassistant.helpers import config_validation as cv
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.s7.const import (
+from custom_components.s7_plus.const import (
     CONF_HOST,
     CONF_PORT,
     CONF_RACK,

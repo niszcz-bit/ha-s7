@@ -8,7 +8,7 @@ from datetime import timedelta
 from homeassistant.core import HomeAssistant
 from snap7.type import SrvArea
 
-from custom_components.s7.coordinator import S7Coordinator, parse_tags
+from custom_components.s7_plus.coordinator import S7Coordinator, parse_tags
 
 
 async def test_coordinator_reads_tags(hass: HomeAssistant, s7_server) -> None:

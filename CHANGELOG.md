@@ -6,6 +6,9 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Changed
+- Fork: the integration domain is now `s7_plus` (name "Siemens S7 PLC Plus"), so it installs and runs side by side with the original `s7` integration without clashes. Services are `s7_plus.write_tag` / `s7_plus.pulse_tag`.
+
 ### Added
 - Tag lines can carry a friendly name: `DB1.DBD0:REAL = Vorlauftemperatur` names the entity. Unique IDs still follow the address, so renaming a tag keeps its history and automations.
 - A writable BOOL tag flagged with `| push` (or `| push:SECONDS`, default 0.5 s) becomes a momentary button instead of a latching switch: pressing it writes `True`, waits, then writes `False` again — for PLC logic with separate set/reset bits, such as lights with their own ON and OFF commands.

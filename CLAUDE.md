@@ -28,16 +28,16 @@ false` and a PEP 735 dependency-groups layout for dev tooling.
 
 ## Architecture quick facts
 
-- `custom_components/s7/plc.py` wraps both protocols behind one `PlcClient`
+- `custom_components/s7_plus/plc.py` wraps both protocols behind one `PlcClient`
   interface (`create_client(protocol, ...)`); the coordinator never touches
   snap7/s7commplus directly. S7CommPlus uses absolute byte-offset access only.
-- `custom_components/s7/coordinator.py` parses configured tag strings
+- `custom_components/s7_plus/coordinator.py` parses configured tag strings
   once (both PLC4X and nodeS7 syntax) via `parse_tag(..., strict=False)`
   and hands `Tag` objects to `client.read_tags()` (python-snap7's optimizer
   coalesces adjacent reads on the legacy path).
 - Platforms classify entities by `tag.datatype` / `tag.area`, not by
   parsing strings.
-- `services.py` registers `s7.write_tag` and `s7.pulse_tag` globally
+- `services.py` registers `s7_plus.write_tag` and `s7_plus.pulse_tag` globally
   (not per-entry).
 - Releases: bump `manifest.json` version, add a `CHANGELOG.md` entry, tag
   `vX.Y.Z` and publish a GitHub release (HACS installs from releases).

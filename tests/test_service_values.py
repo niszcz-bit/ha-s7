@@ -7,8 +7,8 @@ from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ServiceValidationError
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.s7.const import CONF_HOST, CONF_PORT, CONF_RACK, CONF_SLOT, CONF_TAGS, DOMAIN
-from custom_components.s7.services import _coerce_value
+from custom_components.s7_plus.const import CONF_HOST, CONF_PORT, CONF_RACK, CONF_SLOT, CONF_TAGS, DOMAIN
+from custom_components.s7_plus.services import _coerce_value
 
 
 async def _setup(hass: HomeAssistant, port: int, tags: list[str], **options) -> MockConfigEntry:

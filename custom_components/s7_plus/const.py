@@ -7,7 +7,7 @@ from typing import Any
 from homeassistant.const import Platform
 from snap7.type import Area
 
-DOMAIN = "s7"
+DOMAIN = "s7_plus"
 
 # Config entry keys
 CONF_HOST = "host"
