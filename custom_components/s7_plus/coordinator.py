@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import re
 import time
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
@@ -23,6 +24,7 @@ from .const import (
     DEFAULT_PROTOCOL,
     DEFAULT_PULSE_DURATION,
     DOMAIN,
+    NUMERIC_TYPES,
     WRITABLE_AREAS,
     plc_id,
 )
@@ -41,21 +43,27 @@ _PULSE_RELEASE_ATTEMPTS = 3
 
 @dataclass(frozen=True)
 class TagSpec:
-    """One configured tag line: the tag plus its optional display name and push flag."""
+    """One configured tag line: the tag plus its optional display name and flags."""
 
     tag: Tag
-    address: str  # the bare address, without ``= name`` or ``| push`` — keys entities
+    address: str  # the bare address, without ``= name`` or ``| flags`` — keys entities
     name: str | None = None  # friendly name after ``=``, shown as the entity name
     push_duration: float | None = None  # set by ``| push[:seconds]`` — a momentary button
+    value_range: tuple[float, float] | None = None  # set by ``| range:MIN-MAX`` on numeric tags
 
 
-def parse_tag_line(raw: str) -> tuple[str, str | None, float | None]:
-    """Split one tag line into ``(address, name, push_duration)``.
+_RANGE_RE = re.compile(r"^range:(-?\d+(?:\.\d+)?)-(-?\d+(?:\.\d+)?)$")
 
-    Syntax: ``ADDRESS`` optionally followed by ``= Friendly Name`` and
-    ``| push`` or ``| push:SECONDS`` (momentary button instead of a latching
-    switch). ``=`` and ``|`` never appear in PLC4X or nodeS7 addresses, and
-    the list was already split on newlines and semicolons.
+
+def parse_tag_line(raw: str) -> tuple[str, str | None, float | None, tuple[float, float] | None]:
+    """Split one tag line into ``(address, name, push_duration, value_range)``.
+
+    Syntax: ``ADDRESS`` optionally followed by ``= Friendly Name`` and the
+    flags ``| push[:SECONDS]`` (momentary button instead of a latching
+    switch) and ``| range:MIN-MAX`` (limits the number entity, e.g.
+    ``range:0-100`` for a dimmer or blind position). ``=`` and ``|`` never
+    appear in PLC4X or nodeS7 addresses, and the list was already split on
+    newlines and semicolons.
     """
     head, *flags = raw.split("|")
     name: str | None = None
@@ -68,6 +76,7 @@ def parse_tag_line(raw: str) -> tuple[str, str | None, float | None]:
     if not address:
         raise ValueError(f"{raw!r}: empty address")
     push_duration: float | None = None
+    value_range: tuple[float, float] | None = None
     for flag in flags:
         flag = flag.strip()
         if flag == "push":
@@ -79,9 +88,14 @@ def parse_tag_line(raw: str) -> tuple[str, str | None, float | None]:
                 raise ValueError(f"{raw!r}: invalid pulse duration in {flag!r}") from None
             if not 0.05 <= push_duration <= 60.0:
                 raise ValueError(f"{raw!r}: pulse duration must be between 0.05 and 60 seconds")
+        elif (m := _RANGE_RE.match(flag)) is not None:
+            lo, hi = float(m.group(1)), float(m.group(2))
+            if lo >= hi:
+                raise ValueError(f"{raw!r}: range minimum must be below the maximum")
+            value_range = (lo, hi)
         else:
-            raise ValueError(f"{raw!r}: unknown option {flag!r} (supported: push, push:SECONDS)")
-    return address, name, push_duration
+            raise ValueError(f"{raw!r}: unknown option {flag!r} (supported: push, push:SECONDS, range:MIN-MAX)")
+    return address, name, push_duration, value_range
 
 
 def parse_tag_specs(inputs: list[str]) -> dict[str, TagSpec]:
@@ -98,7 +112,7 @@ def parse_tag_specs(inputs: list[str]) -> dict[str, TagSpec]:
     errors: list[str] = []
     for raw in inputs:
         try:
-            address, name, push_duration = parse_tag_line(raw)
+            address, name, push_duration, value_range = parse_tag_line(raw)
             tag = parse_tag(address, strict=False, name=address)
             _ = tag.size  # parse_tag accepts STRING without a length and unknown types
         except ValueError as err:
@@ -114,10 +128,14 @@ def parse_tag_specs(inputs: list[str]) -> dict[str, TagSpec]:
             if tag.area not in WRITABLE_AREAS:
                 errors.append(f"{raw!r}: push tags must be writable (DB, M or Q area)")
                 continue
-        if address in parsed and (parsed[address].name, parsed[address].push_duration) != (name, push_duration):
+        if value_range is not None and tag.datatype.upper() not in NUMERIC_TYPES:
+            errors.append(f"{raw!r}: range is only valid for numeric tags")
+            continue
+        old = parsed.get(address)
+        if old is not None and (old.name, old.push_duration, old.value_range) != (name, push_duration, value_range):
             errors.append(f"{raw!r}: address {address!r} is already configured with a different name or options")
             continue
-        parsed[address] = TagSpec(tag=tag, address=address, name=name, push_duration=push_duration)
+        parsed[address] = TagSpec(tag=tag, address=address, name=name, push_duration=push_duration, value_range=value_range)
     if errors:
         raise ValueError("Invalid tag(s): " + "; ".join(errors))
     return parsed
@@ -209,6 +227,11 @@ class S7Coordinator(DataUpdateCoordinator[dict[str, Any]]):
         """The pulse duration for a push tag, or None for a latching switch."""
         spec = self._tag_specs.get(address)
         return spec.push_duration if spec is not None else None
+
+    def value_range(self, address: str) -> tuple[float, float] | None:
+        """The configured min/max for a numeric tag's number entity, or None."""
+        spec = self._tag_specs.get(address)
+        return spec.value_range if spec is not None else None
 
     @property
     def failed_tags(self) -> dict[str, str]:

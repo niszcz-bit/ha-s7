@@ -9,7 +9,7 @@ from custom_components.s7_plus.coordinator import parse_tag_line, parse_tag_spec
 
 
 def test_plain_address_has_no_extras() -> None:
-    assert parse_tag_line("DB1.DBD0:REAL") == ("DB1.DBD0:REAL", None, None)
+    assert parse_tag_line("DB1.DBD0:REAL") == ("DB1.DBD0:REAL", None, None, None)
 
 
 def test_name_after_equals() -> None:
@@ -17,23 +17,32 @@ def test_name_after_equals() -> None:
         "DB1.DBX6.0:BOOL",
         "Wohnzimmer Licht EIN",
         None,
+        None,
     )
 
 
 def test_push_flag_default_duration() -> None:
-    assert parse_tag_line("M10.0:BOOL|push") == ("M10.0:BOOL", None, DEFAULT_PULSE_DURATION)
+    assert parse_tag_line("M10.0:BOOL|push") == ("M10.0:BOOL", None, DEFAULT_PULSE_DURATION, None)
 
 
 def test_push_flag_custom_duration() -> None:
-    assert parse_tag_line("M10.0:BOOL | push:1.5") == ("M10.0:BOOL", None, 1.5)
+    assert parse_tag_line("M10.0:BOOL | push:1.5") == ("M10.0:BOOL", None, 1.5, None)
 
 
 def test_name_and_push_combined() -> None:
-    assert parse_tag_line("DB2.DBX0.0:BOOL=Licht EIN|push:0.2") == ("DB2.DBX0.0:BOOL", "Licht EIN", 0.2)
+    assert parse_tag_line("DB2.DBX0.0:BOOL=Licht EIN|push:0.2") == ("DB2.DBX0.0:BOOL", "Licht EIN", 0.2, None)
 
 
 def test_nodes7_address_with_name() -> None:
-    assert parse_tag_line("DB1,R8=Restlaufzeit") == ("DB1,R8", "Restlaufzeit", None)
+    assert parse_tag_line("DB1,R8=Restlaufzeit") == ("DB1,R8", "Restlaufzeit", None, None)
+
+
+def test_range_flag() -> None:
+    assert parse_tag_line("DB5802.DBW2:INT=Helligkeit|range:0-100") == ("DB5802.DBW2:INT", "Helligkeit", None, (0.0, 100.0))
+
+
+def test_range_flag_negative_and_float() -> None:
+    assert parse_tag_line("DB1.DBD0:REAL|range:-20.5-80") == ("DB1.DBD0:REAL", None, None, (-20.5, 80.0))
 
 
 @pytest.mark.parametrize(
@@ -45,11 +54,20 @@ def test_nodes7_address_with_name() -> None:
         "M10.0:BOOL|push:abc",  # duration is not a number
         "M10.0:BOOL|push:0.01",  # below the minimum
         "M10.0:BOOL|push:120",  # above the maximum
+        "DB1.DBW4:INT|range:100-0",  # minimum above the maximum
+        "DB1.DBW4:INT|range:abc-def",  # not numbers
     ],
 )
 def test_bad_lines_raise(line: str) -> None:
     with pytest.raises(ValueError, match="Invalid tag"):
         parse_tag_specs([line])
+
+
+def test_range_needs_a_numeric_tag() -> None:
+    with pytest.raises(ValueError, match="only valid for numeric"):
+        parse_tag_specs(["M10.0:BOOL|range:0-100"])
+    specs = parse_tag_specs(["DB1.DBW4:INT|range:0-100"])
+    assert specs["DB1.DBW4:INT"].value_range == (0.0, 100.0)
 
 
 def test_specs_are_keyed_by_bare_address() -> None:

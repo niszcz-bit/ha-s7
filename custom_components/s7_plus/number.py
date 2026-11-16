@@ -51,7 +51,9 @@ async def async_setup_entry(
 class S7Number(S7BaseEntity, NumberEntity):
     def __init__(self, coordinator: S7Coordinator, tag: str, datatype: str) -> None:
         super().__init__(coordinator, tag)
-        lo, hi = _RANGES.get(datatype, (-1e18, 1e18))
+        # A ``| range:MIN-MAX`` flag narrows the type's limits, e.g. 0-100
+        # for a dimmer setpoint or a blind position.
+        lo, hi = coordinator.value_range(tag) or _RANGES.get(datatype, (-1e18, 1e18))
         self._attr_native_min_value = lo
         self._attr_native_max_value = hi
         self._datatype = datatype

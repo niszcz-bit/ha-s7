@@ -21,6 +21,8 @@
   (oder `| push:1.0` für die Dauer in Sekunden) erzeugt einen Taster, der
   das Bit kurz setzt und automatisch wieder zurücknimmt — für SPS-Programme
   mit getrennten Ein-/Aus-Bits.
+- **Wertebereich für Zahlenfelder:** `DB5802.DBW2:INT = Helligkeit | range:0-100`
+  begrenzt das Eingabefeld z. B. für Dimmer oder Jalousie-Positionen.
 
 ## Beispiel-Tagliste
 
