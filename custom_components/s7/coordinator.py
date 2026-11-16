@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
+from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
@@ -13,7 +14,18 @@ from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from snap7.tags import Tag, parse_tag
 
-from .const import CONF_HOST, CONF_PORT, CONF_PROTOCOL, CONF_RACK, CONF_SLOT, DEFAULT_PROTOCOL, DOMAIN, plc_id
+from .const import (
+    CONF_HOST,
+    CONF_PORT,
+    CONF_PROTOCOL,
+    CONF_RACK,
+    CONF_SLOT,
+    DEFAULT_PROTOCOL,
+    DEFAULT_PULSE_DURATION,
+    DOMAIN,
+    WRITABLE_AREAS,
+    plc_id,
+)
 from .plc import TagReadError, create_client, is_connection_error
 
 _LOGGER = logging.getLogger(__name__)
@@ -27,20 +39,67 @@ _RECONNECT_BACKOFF_SECONDS = (1.0, 2.0, 5.0, 10.0)
 _PULSE_RELEASE_ATTEMPTS = 3
 
 
-def parse_tags(inputs: list[str]) -> dict[str, Tag]:
-    """Parse configured tag strings into Tag objects, keyed by original input.
+@dataclass(frozen=True)
+class TagSpec:
+    """One configured tag line: the tag plus its optional display name and push flag."""
+
+    tag: Tag
+    address: str  # the bare address, without ``= name`` or ``| push`` — keys entities
+    name: str | None = None  # friendly name after ``=``, shown as the entity name
+    push_duration: float | None = None  # set by ``| push[:seconds]`` — a momentary button
+
+
+def parse_tag_line(raw: str) -> tuple[str, str | None, float | None]:
+    """Split one tag line into ``(address, name, push_duration)``.
+
+    Syntax: ``ADDRESS`` optionally followed by ``= Friendly Name`` and
+    ``| push`` or ``| push:SECONDS`` (momentary button instead of a latching
+    switch). ``=`` and ``|`` never appear in PLC4X or nodeS7 addresses, and
+    the list was already split on newlines and semicolons.
+    """
+    head, *flags = raw.split("|")
+    name: str | None = None
+    if "=" in head:
+        address, name = (part.strip() for part in head.split("=", 1))
+        if not name:
+            raise ValueError(f"{raw!r}: empty name after '='")
+    else:
+        address = head.strip()
+    if not address:
+        raise ValueError(f"{raw!r}: empty address")
+    push_duration: float | None = None
+    for flag in flags:
+        flag = flag.strip()
+        if flag == "push":
+            push_duration = DEFAULT_PULSE_DURATION
+        elif flag.startswith("push:"):
+            try:
+                push_duration = float(flag.split(":", 1)[1])
+            except ValueError:
+                raise ValueError(f"{raw!r}: invalid pulse duration in {flag!r}") from None
+            if not 0.05 <= push_duration <= 60.0:
+                raise ValueError(f"{raw!r}: pulse duration must be between 0.05 and 60 seconds")
+        else:
+            raise ValueError(f"{raw!r}: unknown option {flag!r} (supported: push, push:SECONDS)")
+    return address, name, push_duration
+
+
+def parse_tag_specs(inputs: list[str]) -> dict[str, TagSpec]:
+    """Parse configured tag lines into TagSpec objects, keyed by bare address.
 
     Accepts both PLC4X (``DB1.DBD0:REAL``) and nodeS7 (``DB1,R0``) syntax.
     Bare short forms like ``M7.1`` or ``IW22`` are accepted via
-    ``parse_tag(..., strict=False)``.
+    ``parse_tag(..., strict=False)``. Each line may carry a friendly name
+    (``ADDRESS = Name``) and a push flag (``ADDRESS | push[:seconds]``).
 
     Array tags are rejected. Raises ValueError listing every failed input.
     """
-    parsed: dict[str, Tag] = {}
+    parsed: dict[str, TagSpec] = {}
     errors: list[str] = []
     for raw in inputs:
         try:
-            tag = parse_tag(raw, strict=False, name=raw)
+            address, name, push_duration = parse_tag_line(raw)
+            tag = parse_tag(address, strict=False, name=address)
             _ = tag.size  # parse_tag accepts STRING without a length and unknown types
         except ValueError as err:
             errors.append(f"{raw!r}: {err}")
@@ -48,10 +107,28 @@ def parse_tags(inputs: list[str]) -> dict[str, Tag]:
         if tag.count > 1:
             errors.append(f"{raw!r}: array tags are not supported")
             continue
-        parsed[raw] = tag
+        if push_duration is not None:
+            if tag.datatype.upper() != "BOOL":
+                errors.append(f"{raw!r}: push is only valid for BOOL tags")
+                continue
+            if tag.area not in WRITABLE_AREAS:
+                errors.append(f"{raw!r}: push tags must be writable (DB, M or Q area)")
+                continue
+        if address in parsed and (parsed[address].name, parsed[address].push_duration) != (name, push_duration):
+            errors.append(f"{raw!r}: address {address!r} is already configured with a different name or options")
+            continue
+        parsed[address] = TagSpec(tag=tag, address=address, name=name, push_duration=push_duration)
     if errors:
         raise ValueError("Invalid tag(s): " + "; ".join(errors))
     return parsed
+
+
+def parse_tags(inputs: list[str]) -> dict[str, Tag]:
+    """Parse configured tag strings into Tag objects, keyed by bare address.
+
+    Thin wrapper over ``parse_tag_specs`` for callers that only need the tags.
+    """
+    return {address: spec.tag for address, spec in parse_tag_specs(inputs).items()}
 
 
 class S7Coordinator(DataUpdateCoordinator[dict[str, Any]]):
@@ -88,9 +165,9 @@ class S7Coordinator(DataUpdateCoordinator[dict[str, Any]]):
             password=password,
         )
         self._host = host
-        self._parsed_tags = parse_tags(list(tags))
-        # parse_tags keeps one entry per address, and every value read needs one string.
-        self._tag_strings = list(self._parsed_tags)
+        self._tag_specs = parse_tag_specs(list(tags))
+        # parse_tag_specs keeps one entry per address, and every value read needs one string.
+        self._tag_strings = list(self._tag_specs)
         self._lock = asyncio.Lock()
         self._closing = False
         # Tags the PLC refused on the last poll that reached it, with the reason.
@@ -120,8 +197,18 @@ class S7Coordinator(DataUpdateCoordinator[dict[str, Any]]):
 
     @property
     def parsed_tags(self) -> dict[str, Tag]:
-        """Parsed Tag objects keyed by original input string."""
-        return self._parsed_tags
+        """Parsed Tag objects keyed by bare address string."""
+        return {address: spec.tag for address, spec in self._tag_specs.items()}
+
+    def tag_name(self, address: str) -> str | None:
+        """The friendly name configured for an address, or None."""
+        spec = self._tag_specs.get(address)
+        return spec.name if spec is not None else None
+
+    def push_duration(self, address: str) -> float | None:
+        """The pulse duration for a push tag, or None for a latching switch."""
+        spec = self._tag_specs.get(address)
+        return spec.push_duration if spec is not None else None
 
     @property
     def failed_tags(self) -> dict[str, str]:
@@ -178,7 +265,7 @@ class S7Coordinator(DataUpdateCoordinator[dict[str, Any]]):
         def _read() -> dict[str, Any]:
             if not self._client.connected:
                 self._blocking_connect()
-            values = self._client.read_each(list(self._parsed_tags.values()))
+            values = self._client.read_each([spec.tag for spec in self._tag_specs.values()])
             self._cpu_state = self._read_cpu_state()
             return dict(zip(self._tag_strings, values, strict=True))
 
@@ -238,9 +325,9 @@ class S7Coordinator(DataUpdateCoordinator[dict[str, Any]]):
 
     def resolve_tag(self, tag_string: str) -> Tag:
         """Return the tag for a configured address, or parse an ad-hoc one."""
-        tag = self._parsed_tags.get(tag_string)
-        if tag is not None:
-            return tag
+        spec = self._tag_specs.get(tag_string)
+        if spec is not None:
+            return spec.tag
         try:
             tag = parse_tag(tag_string, strict=False, name=tag_string)
             _ = tag.size

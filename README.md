@@ -24,7 +24,7 @@ Two wire protocols are supported, both pure Python with no native dependencies:
   | Tag area | Datatype | Entities |
   |---|---|---|
   | `I` (input) | `BOOL` | `binary_sensor` |
-  | `DB`, `M`, `Q` | `BOOL` | `switch` (writable) |
+  | `DB`, `M`, `Q` | `BOOL` | `switch` (writable); `button` (momentary) with `\| push` |
   | `DB`, `M`, `Q` | numeric | `sensor` + `number` (writable) |
   | `DB`, `M`, `Q` | `STRING`, `WSTRING` | `sensor` + `text` (writable) |
   | `I`, or any area | numeric, `DATE`, `TIME`, … | `sensor` (read-only) |
@@ -93,6 +93,20 @@ DB1,R8
 ```
 
 See [python-snap7's tag docs](https://python-snap7.readthedocs.io/en/latest/API/tags.html) for the full address syntax.
+
+### Tag names and push buttons
+
+A tag line can carry a friendly name after `=`, and a writable BOOL tag can be flagged as a momentary push button with `| push`:
+
+```
+DB1.DBD0:REAL = Vorlauftemperatur
+DB1.DBX6.0:BOOL = Wohnzimmer Licht EIN | push
+DB1.DBX6.1:BOOL = Wohnzimmer Licht AUS | push:1.0
+M10.0:BOOL = Störung quittieren | push
+```
+
+- **`= Name`** — the entity is named after the text instead of the raw address. The entity's unique ID still follows the address, so renaming a tag keeps its history and automations.
+- **`| push`** or **`| push:SECONDS`** — the tag becomes a *button* instead of a latching switch. Pressing it writes `True`, waits (default 0.5 s, or the given duration), then writes `False` again. This fits PLC logic with separate set/reset bits — for example a light with its own ON and OFF commands — where a toggle switch would have to be switched off by hand after every use. Push tags must be BOOL in a writable area (DB, M, Q).
 
 ## Services
 
